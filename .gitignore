@@ -30,7 +30,7 @@ logs/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
+# *.ipynb
 
 # IDE
 .vscode/
