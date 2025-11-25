@@ -39,10 +39,10 @@ def compute_trend_features(df: pd.DataFrame) -> pd.DataFrame:
     g = df.groupby("ticker")["close"]
 
     for n in [5, 10, 20, 50, 200]:
-        df[f"sma_{n}"] = g.transform(lambda x: x.rolling(n).mean())
+        df[f"sma_{n}"] = g.transform(lambda x, n=n: x.rolling(n).mean())
 
     for n in [10, 20, 50]:
-        df[f"ema_{n}"] = g.transform(lambda x: x.ewm(span=n, adjust=False).mean())
+        df[f"ema_{n}"] = g.transform(lambda x, n=n: x.ewm(span=n, adjust=False).mean())
 
     df["sma_5_20_diff"] = df["sma_5"] - df["sma_20"]
     df["sma_10_50_diff"] = df["sma_10"] - df["sma_50"]
@@ -69,7 +69,7 @@ def compute_trend_features(df: pd.DataFrame) -> pd.DataFrame:
 def compute_momentum_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    def compute_rsi(x, period=14):
+    def compute_rsi(x: pd.Series, period: int = 14) -> pd.Series:
         delta = x.diff()
         gain = delta.clip(lower=0)
         loss = -delta.clip(upper=0)
@@ -136,9 +136,13 @@ def compute_volume_features(df: pd.DataFrame) -> pd.DataFrame:
 
     df["typical_price"] = (df["high"] + df["low"] + df["close"]) / 3
 
-    df["vwap"] = (df["typical_price"] * df["volume"]).groupby(df["ticker"]).cumsum() / df[
-        "volume"
-    ].groupby(df["ticker"]).cumsum()
+    # Use rolling 20-day VWAP instead of cumulative (more standard for daily bars)
+    df["vwap"] = (
+        df.groupby("ticker")["typical_price"]
+        .rolling(20)
+        .apply(lambda x: np.average(x, weights=df.loc[x.index, "volume"]), raw=False)
+        .reset_index(level=0, drop=True)
+    )
 
     df["vwap_dev"] = df["close"] / df["vwap"] - 1
 
@@ -190,7 +194,9 @@ def compute_targets(df: pd.DataFrame) -> pd.DataFrame:
 # ============================================================
 # A) SECTOR & MACRO MERGE
 # ============================================================
-def merge_sector_macro(df, sector_df, macro_df):
+def merge_sector_macro(
+    df: pd.DataFrame, sector_df: pd.DataFrame, macro_df: pd.DataFrame
+) -> pd.DataFrame:
     df = df.copy()
     df = df.merge(sector_df, on="date", how="left")
     df = df.merge(macro_df, on="date", how="left")
@@ -209,20 +215,68 @@ def compute_spread_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
-# C) REGIME LABELING
+# C) REGIME LABELING (using rolling percentile ranks to avoid lookahead)
 # ============================================================
 def compute_regime_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["regime_vol"] = pd.qcut(df["vix_vol_20"], q=3, labels=["low", "mid", "high"])
-    df["regime_trend"] = pd.qcut(df["spy_mom_10"], q=3, labels=["down", "neutral", "up"])
-    df["regime_momentum"] = pd.qcut(df["xlk_mom_10"], q=3, labels=["weak", "neutral", "strong"])
+
+    # Use rolling percentile rank (252 trading days = ~1 year) to avoid lookahead bias
+    # Percentile rank tells us where current value sits relative to past distribution
+    window = 252
+
+    # Compute rolling percentile ranks (0-1 scale)
+    df["regime_vol_pct"] = (
+        df["vix_vol_20"]
+        .rolling(window, min_periods=60)
+        .apply(lambda x: (x.iloc[-1] <= x).sum() / len(x) if len(x) > 0 else np.nan, raw=False)
+    )
+
+    df["regime_trend_pct"] = (
+        df["spy_mom_10"]
+        .rolling(window, min_periods=60)
+        .apply(lambda x: (x.iloc[-1] <= x).sum() / len(x) if len(x) > 0 else np.nan, raw=False)
+    )
+
+    df["regime_momentum_pct"] = (
+        df["xlk_mom_10"]
+        .rolling(window, min_periods=60)
+        .apply(lambda x: (x.iloc[-1] <= x).sum() / len(x) if len(x) > 0 else np.nan, raw=False)
+    )
+
+    # Convert percentile ranks to regime labels
+    df["regime_vol"] = pd.cut(
+        df["regime_vol_pct"],
+        bins=[0, 0.33, 0.67, 1.0],
+        labels=["low", "mid", "high"],
+        include_lowest=True,
+    )
+
+    df["regime_trend"] = pd.cut(
+        df["regime_trend_pct"],
+        bins=[0, 0.33, 0.67, 1.0],
+        labels=["down", "neutral", "up"],
+        include_lowest=True,
+    )
+
+    df["regime_momentum"] = pd.cut(
+        df["regime_momentum_pct"],
+        bins=[0, 0.33, 0.67, 1.0],
+        labels=["weak", "neutral", "strong"],
+        include_lowest=True,
+    )
+
+    # Drop temporary percentile columns
+    df = df.drop(columns=["regime_vol_pct", "regime_trend_pct", "regime_momentum_pct"])
+
     return df
 
 
 # ============================================================
 # MASTER FUNCTION
 # ============================================================
-def compute_all_features(df: pd.DataFrame, sector_df=None, macro_df=None):
+def compute_all_features(
+    df: pd.DataFrame, sector_df: pd.DataFrame | None = None, macro_df: pd.DataFrame | None = None
+) -> pd.DataFrame:
     df = compute_return_features(df)
     df = compute_trend_features(df)
     df = compute_momentum_features(df)

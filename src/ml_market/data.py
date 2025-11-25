@@ -2,7 +2,6 @@
 
 import pandas as pd
 import yfinance as yf
-import numpy as np
 
 
 def fetch_ohlcv(
@@ -85,7 +84,7 @@ def fetch_ohlcv(
 # ================================================================
 # PULL & COMPUTE SECTOR DATA (XLK)
 # ================================================================
-def load_sector_data(start="2010-01-01", end=None):
+def load_sector_data(start: str = "2010-01-01", end: str | None = None) -> pd.DataFrame:
     ticker = "XLK"
     data = yf.download(ticker, start=start, end=end, auto_adjust=True)
 
@@ -110,13 +109,13 @@ def load_sector_data(start="2010-01-01", end=None):
     df["xlk_vol_20"] = df["xlk_ret_1d"].rolling(20).std()
     df["xlk_mom_10"] = df["close"].pct_change(10)
 
-    return df
+    return df  # type: ignore[no-any-return]
 
 
 # ================================================================
 # PULL & COMPUTE MACRO / MARKET CONTEXT DATA
 # ================================================================
-def load_macro_data(start="2010-01-01", end=None):
+def load_macro_data(start: str = "2010-01-01", end: str | None = None) -> pd.DataFrame:
     symbols = ["SPY", "QQQ", "TLT", "DX-Y.NYB", "^VIX"]
     rename_map = {"DX-Y.NYB": "DXY", "^VIX": "VIX"}
 
@@ -155,4 +154,4 @@ def load_macro_data(start="2010-01-01", end=None):
     for f in frames[1:]:
         macro = macro.merge(f, on="date", how="outer")
 
-    return macro.sort_values("date")
+    return macro.sort_values("date")  # type: ignore[no-any-return]

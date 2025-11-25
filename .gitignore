@@ -8,3 +8,43 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Data & models (large files)
+data/
+models/
+*.pkl
+*.joblib
+*.h5
+*.parquet
+
+# Results & outputs
+results/
+logs/
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# scripts
+scripts/
