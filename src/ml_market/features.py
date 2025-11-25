@@ -22,7 +22,7 @@ def compute_return_features(df: pd.DataFrame) -> pd.DataFrame:
     df["ret_std_5"] = df.groupby("ticker")["ret1d"].transform(lambda x: x.rolling(5).std())
 
     df["ret_std_20"] = df.groupby("ticker")["ret1d"].transform(lambda x: x.rolling(20).std())
-    df["ret_vol_ratio_5_20"] = df["ret_std_5"] / df["ret_std_20"]
+    df["ret_vol_ratio_5_20"] = df["ret_std_5"] / df["ret_std_20"].replace(0, np.nan)
 
     df["ret_autocorr_5"] = df.groupby("ticker")["ret1d"].transform(
         lambda x: x.rolling(5).apply(lambda s: s.autocorr(1))
@@ -73,9 +73,10 @@ def compute_momentum_features(df: pd.DataFrame) -> pd.DataFrame:
         delta = x.diff()
         gain = delta.clip(lower=0)
         loss = -delta.clip(upper=0)
-        avg_gain = gain.rolling(period).mean()
-        avg_loss = loss.rolling(period).mean()
-        rs = avg_gain / avg_loss
+        # Use Wilder's smoothing (EMA with alpha=1/period) - industry standard
+        avg_gain = gain.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+        rs = avg_gain / avg_loss.replace(0, np.nan)
         return 100 - (100 / (1 + rs))
 
     df["rsi_14"] = df.groupby("ticker")["close"].transform(lambda x: compute_rsi(x, 14))
@@ -83,9 +84,11 @@ def compute_momentum_features(df: pd.DataFrame) -> pd.DataFrame:
     low14 = df.groupby("ticker")["low"].transform(lambda x: x.rolling(14).min())
     high14 = df.groupby("ticker")["high"].transform(lambda x: x.rolling(14).max())
 
-    df["stoch_k"] = (df["close"] - low14) / (high14 - low14) * 100
+    # Protect against division by zero when high == low (flat price period)
+    hl_range = (high14 - low14).replace(0, np.nan)
+    df["stoch_k"] = (df["close"] - low14) / hl_range * 100
     df["stoch_d"] = df.groupby("ticker")["stoch_k"].transform(lambda x: x.rolling(3).mean())
-    df["williams_r"] = (high14 - df["close"]) / (high14 - low14) * -100
+    df["williams_r"] = (high14 - df["close"]) / hl_range * -100
 
     return df
 
@@ -112,8 +115,10 @@ def compute_volatility_features(df: pd.DataFrame) -> pd.DataFrame:
     df["bb_middle"] = mid
     df["bb_upper"] = mid + 2 * std
     df["bb_lower"] = mid - 2 * std
-    df["boll_width"] = (df["bb_upper"] - df["bb_lower"]) / df["bb_middle"]
-    df["bb_position"] = (df["close"] - df["bb_lower"]) / (df["bb_upper"] - df["bb_lower"])
+    # Protect against division by zero (flat price or zero middle)
+    df["boll_width"] = (df["bb_upper"] - df["bb_lower"]) / df["bb_middle"].replace(0, np.nan)
+    bb_range = (df["bb_upper"] - df["bb_lower"]).replace(0, np.nan)
+    df["bb_position"] = (df["close"] - df["bb_lower"]) / bb_range
 
     df["vol20"] = df.groupby("ticker")["ret1d"].transform(lambda x: x.rolling(20).std())
 
@@ -137,14 +142,14 @@ def compute_volume_features(df: pd.DataFrame) -> pd.DataFrame:
     df["typical_price"] = (df["high"] + df["low"] + df["close"]) / 3
 
     # Use rolling 20-day VWAP instead of cumulative (more standard for daily bars)
-    df["vwap"] = (
-        df.groupby("ticker")["typical_price"]
-        .rolling(20)
-        .apply(lambda x: np.average(x, weights=df.loc[x.index, "volume"]), raw=False)
-        .reset_index(level=0, drop=True)
-    )
+    # VWAP = sum(typical_price * volume) / sum(volume)
+    df["_pv"] = df["typical_price"] * df["volume"]
+    pv_sum = df.groupby("ticker")["_pv"].transform(lambda x: x.rolling(20).sum())
+    vol_sum = df.groupby("ticker")["volume"].transform(lambda x: x.rolling(20).sum())
+    df["vwap"] = pv_sum / vol_sum.replace(0, np.nan)
+    df = df.drop(columns=["_pv"])
 
-    df["vwap_dev"] = df["close"] / df["vwap"] - 1
+    df["vwap_dev"] = df["close"] / df["vwap"].replace(0, np.nan) - 1
 
     return df
 
