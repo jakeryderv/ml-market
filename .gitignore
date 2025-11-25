@@ -46,5 +46,6 @@ logs/
 .DS_Store
 Thumbs.db
 
-# scripts
+# mystuff
 scripts/
+TESTING.md
