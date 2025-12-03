@@ -104,10 +104,11 @@ def load_sector_data(start: str = "2010-01-01", end: str | None = None) -> pd.Da
     df.rename(columns={close_col: "close"}, inplace=True)
 
     df = df[["date", "close"]].sort_values("date")
+    df = df.rename(columns={"close": "xlk_close"})
 
-    df["xlk_ret_1d"] = df["close"].pct_change()
+    df["xlk_ret_1d"] = df["xlk_close"].pct_change()
     df["xlk_vol_20"] = df["xlk_ret_1d"].rolling(20).std()
-    df["xlk_mom_10"] = df["close"].pct_change(10)
+    df["xlk_mom_10"] = df["xlk_close"].pct_change(10)
 
     return df  # type: ignore[no-any-return]
 
