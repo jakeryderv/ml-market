@@ -1,4 +1,4 @@
-# Predicting Return and Volatility Distributions for Tech Stocks
+# Predicting Return and Volatility Distributions
 
 Team: Jake and Jolie
 
@@ -14,6 +14,8 @@ A machine learning project demonstrating that while short-term stock returns are
 - Universe: QQQ ETF and its top 10 holdings (NVDA, MSFT, AAPL, AVGO, AMZN, TSLA, META, GOOGL, GOOG, NFLX)
 - Time period: 2016-2024 for training/CV, 2025 for out-of-sample validation
 - Prediction horizons: 1-day and 5-day forward returns and volatility
+
+**Why QQQ + Top Holdings?**: Tech stocks exhibit high volatility with strong clustering behavior, making them ideal for testing volatility prediction. Using QQQ plus its top holdings provides sufficient training data while keeping assets correlated enough for patterns to transfer across tickers.
 
 ## Dataset Description
 
@@ -40,12 +42,7 @@ A machine learning project demonstrating that while short-term stock returns are
 - Returns exhibit high kurtosis (12.6) indicating fat tails - extreme events more frequent than normal distribution
 - Volatility is right-skewed (3.7) with occasional large spikes
 - Strong autocorrelation in volatility (clustering) vs. near-zero for returns
-- 53.7% of days are up days (slight positive drift)
-
-### Preprocessing
-- Forward-fill missing external data features
-- Drop rows with missing core OHLCV or targets
-- StandardScaler applied to linear models; tree-based models use raw features
+- biased up direction
 
 ### Models
 | Model | Type | Use Case |
@@ -123,12 +120,6 @@ pip install -r requirements.txt
 - **Selection bias**: Tech-heavy universe may not generalize to other sectors
 - **Regime dependence**: Trained primarily on 2016-2024 (low rates, tech bull market); may underperform in different regimes
 - **OOS period short**: Only ~230 trading days of true OOS (2025 YTD)
-
-### Practical Limitations
-- **Returns remain unpredictable**: 0.04 correlation is not actionable for trading
-- **Strategy degradation OOS**: Vol-timing strategy underperforms buy-and-hold in 2025
-- **Rare confident signals**: Direction strategy produces only ~1 signal/year
-- **Transaction costs ignored**: Real-world implementation would reduce any edge
 
 ### Ethical Considerations
 - **Not financial advice**: This is an educational project demonstrating ML techniques
