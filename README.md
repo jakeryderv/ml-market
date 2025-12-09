@@ -102,8 +102,7 @@ A machine learning project demonstrating that while short-term stock returns are
 
 ```bash
 # Clone repository
-git clone <repository-url>
-cd ml-market
+git clone https://github.com/jakeryderv/ml-market.git
 
 # uv create virtual environment and install dependencies
 uv sync
