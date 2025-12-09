@@ -1,5 +1,7 @@
 # Predicting Return and Volatility Distributions for Tech Stocks
 
+Team: Jake and Jolie
+
 A machine learning project demonstrating that while short-term stock returns are largely unpredictable, volatility can be forecasted with meaningful accuracy using quantile regression forests.
 
 ## Problem Statement
@@ -26,13 +28,15 @@ A machine learning project demonstrating that while short-term stock returns are
 
 **Size**:
 - 27,412 total samples (11 tickers x ~2,500 trading days)
-- 24,904 CV samples (2016-2024), 2,508 OOS samples (2025)
 
 **License**: Yahoo Finance data is subject to their Terms of Service. This project is for educational/research purposes only.
 
 ## Approach Summary
 
 ### EDA Highlights
+
+![distributions](reports/figs/dists.png)
+
 - Returns exhibit high kurtosis (12.6) indicating fat tails - extreme events more frequent than normal distribution
 - Volatility is right-skewed (3.7) with occasional large spikes
 - Strong autocorrelation in volatility (clustering) vs. near-zero for returns
@@ -53,7 +57,7 @@ A machine learning project demonstrating that while short-term stock returns are
 | GARCH(1,1) | Time series baseline | Volatility benchmark |
 
 ### Rationale
-- **Walk-forward CV**: Expanding window (train on 2016, test 2017 ’ train on 2016-2017, test 2018 ’ ...) prevents look-ahead bias
+- **Walk-forward CV**: Expanding window (train on 2016, test 2017 -> train on 2016-2017, test 2018 -> ...) prevents look-ahead bias
 - **Quantile RF over point predictions**: Captures uncertainty; produces calibrated intervals showing model confidence
 - **QRF over GARCH**: Leverages cross-asset features (VIX, volume, sector dispersion) that univariate GARCH cannot use
 
@@ -61,18 +65,23 @@ A machine learning project demonstrating that while short-term stock returns are
 
 ### Distribution Prediction Performance
 
+![oos-test](reports/figs/oos.png)
+
 | Target | CV Correlation | OOS Correlation | 90% Coverage | 50% Coverage |
 |--------|----------------|-----------------|--------------|--------------|
-| Returns 1D | 0.044 | 0.188 | 87.0% / 83.0% | 47.7% / 42.9% |
-| Returns 5D | 0.061 | - | 84.6% | 44.3% |
-| **Volatility 1D** | **0.407** | **0.442** | **87.6% / 89.2%** | **48.6% / 50.6%** |
-| Volatility 5D | 0.553 | - | 88.0% | 48.2% |
+| Returns 1D | 0.042 | 0.171 | 86.9% / 82.9% | 47.7% / 42.8% |
+| Returns 5D | 0.062 | - | 84.4% | 44.1% |
+| **Volatility 1D** | **0.403** | **0.446** | **87.6% / 89.2%** | **48.8% / 50.3%** |
+| Volatility 5D | 0.556 | - | 88.1% | 48.3% |
 
 ### Model Comparison (Volatility)
-- **QRF vs GARCH**: 0.219 vs 0.147 correlation on QQQ (+49% improvement)
-- **RF vs Ridge**: 0.42 vs 0.35 correlation (non-linear patterns matter)
+- **QRF vs GARCH**: 0.221 vs 0.147 correlation on QQQ (+50% improvement)
+- **RF vs Ridge**: 0.418 vs 0.349 correlation (non-linear patterns matter)
 
 ### Calibration
+
+![cal](reports/figs/cal.png)
+
 - Mean absolute calibration error: 1.8% (volatility), 1.4% (returns)
 - Near-perfect diagonal on calibration plots - model "knows what it doesn't know"
 
@@ -83,16 +92,11 @@ A machine learning project demonstrating that while short-term stock returns are
 4. `vlm_ratio_5`: 0.008
 5. `vol_parkinson` (Parkinson volatility): 0.006
 
-### Trading Strategy (Appendix)
-- Vol-timing strategy: In-sample Sharpe +0.17 vs buy-and-hold; **OOS degrades to -0.10**
-- Max drawdown reduction: -9.1% in-sample, -5.1% OOS
-- Conclusion: Statistical predictability does not automatically translate to trading alpha
 
 ## Reproducibility
 
 ### Requirements
 - Python >= 3.11 (tested with 3.11, 3.12)
-- Dependencies managed via `uv` (see `pyproject.toml`)
 
 ### Installation
 
@@ -101,46 +105,12 @@ A machine learning project demonstrating that while short-term stock returns are
 git clone <repository-url>
 cd ml-market
 
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Create virtual environment and install dependencies
+# uv create virtual environment and install dependencies
 uv sync
 
-# Or with pip (generate requirements first)
-uv pip compile pyproject.toml -o requirements.txt
+# Or with pip
 pip install -r requirements.txt
 ```
-
-### Dependencies
-```
-arch>=8.0.0
-ipykernel>=7.1.0
-jupyter>=1.1.1
-matplotlib>=3.10.7
-numpy>=2.3.5
-pandas>=2.3.3
-quantile-forest>=1.4.1
-scikit-learn>=1.7.2
-seaborn>=0.13.2
-yfinance>=0.2.66
-```
-
-### Running the Analysis
-
-```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Launch Jupyter
-jupyter notebook main_notebook.ipynb
-
-# Or run as script (cells execute sequentially)
-jupyter nbconvert --to script main_notebook.ipynb
-python main_notebook.py
-```
-
-**Note**: First run downloads ~10 years of data for 11 tickers plus VIX, sector ETFs, and other external data. This takes 2-5 minutes depending on connection speed.
 
 ## Ethics, Risks, and Limitations
 
@@ -165,9 +135,3 @@ python main_notebook.py
 - **Not financial advice**: This is an educational project demonstrating ML techniques
 - **Market impact**: Strategies based on public data face crowding risk
 - **Model opacity**: Random forests are less interpretable than linear models; feature importance helps but doesn't fully explain predictions
-
-### Recommendations for Practitioners
-1. Use volatility forecasts for risk management, not alpha generation
-2. Always validate on true out-of-sample data before deployment
-3. Account for transaction costs, slippage, and capacity constraints
-4. Monitor for regime changes that may invalidate historical patterns

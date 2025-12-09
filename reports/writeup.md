@@ -230,16 +230,16 @@ To validate our hyperparameter choices, we compared four configurations ranging 
 
 | Configuration | max_depth | min_samples_leaf | Correlation | RMSE |
 |---------------|-----------|------------------|-------------|------|
-| Conservative | 3 | 100 | 0.4014 | 0.01657 |
-| **Moderate (baseline)** | **5** | **50** | **0.4174** | **0.01642** |
-| Aggressive | 7 | 30 | 0.4178 | 0.01639 |
-| Very Aggressive | 10 | 20 | 0.4174 | 0.01637 |
+| Conservative | 3 | 100 | 0.4015 | 0.01657 |
+| **Moderate (baseline)** | **5** | **50** | **0.4176** | **0.01642** |
+| Aggressive | 7 | 30 | 0.4183 | 0.01639 |
+| Very Aggressive | 10 | 20 | 0.4184 | 0.01636 |
 
 **Key Findings**:
-- Best config is Aggressive (corr=0.4178), but only marginally better than Moderate
+- Best config is Very Aggressive (corr=0.4184), but only marginally better than Moderate
 - The moderate configuration achieves near-optimal performance
 - More aggressive settings show diminishing returns and risk overfitting
-- Conservative settings underfit slightly (0.4014 vs 0.4174)
+- Conservative settings underfit slightly (0.4015 vs 0.4176)
 
 **Conclusion**: We proceed with `max_depth=5, min_samples_leaf=50` as these provide strong performance without overfitting risk.
 
@@ -266,41 +266,41 @@ To validate our hyperparameter choices, we compared four configurations ranging 
 **Returns Prediction (Regression)**:
 | Target | Model | Correlation | RMSE | MAE | R² |
 |--------|-------|-------------|------|-----|-----|
-| ret_1d | Ridge | 0.013 | 0.03049 | 0.02177 | -0.611 |
+| ret_1d | Ridge | 0.013 | 0.03050 | 0.02177 | -0.612 |
 | ret_1d | RF | 0.021 | 0.02437 | 0.01617 | -0.029 |
-| ret_5d | Ridge | 0.004 | 0.07196 | 0.05353 | -0.885 |
-| ret_5d | RF | 0.072 | 0.05438 | 0.03792 | -0.077 |
+| ret_5d | Ridge | 0.004 | 0.07196 | 0.05354 | -0.886 |
+| ret_5d | RF | 0.072 | 0.05439 | 0.03792 | -0.077 |
 
 **Direction Prediction (Classification)**:
 | Target | Model | Accuracy | AUC | Precision | Recall | F1 |
 |--------|-------|----------|-----|-----------|--------|-----|
 | dir_1d | LogReg | 50.8% | 0.499 | 0.536 | 0.634 | 0.581 |
-| dir_1d | RF | 52.1% | 0.511 | 0.540 | 0.739 | 0.624 |
-| dir_5d | LogReg | 50.4% | 0.487 | 0.567 | 0.618 | 0.591 |
-| dir_5d | RF | 54.8% | 0.507 | 0.582 | 0.782 | 0.668 |
+| dir_1d | RF | 52.2% | 0.511 | 0.540 | 0.740 | 0.624 |
+| dir_5d | LogReg | 50.5% | 0.487 | 0.567 | 0.618 | 0.591 |
+| dir_5d | RF | 54.9% | 0.508 | 0.583 | 0.783 | 0.668 |
 
 **Volatility Prediction (Regression)**:
 | Target | Model | Correlation | RMSE | MAE | R² |
 |--------|-------|-------------|------|-----|-----|
 | vol_1d | Ridge | 0.349 | 0.01714 | 0.01164 | 0.095 |
-| vol_1d | RF | 0.417 | 0.01642 | 0.01045 | 0.169 |
-| vol_5d | Ridge | 0.514 | 0.01272 | 0.00869 | 0.217 |
+| vol_1d | RF | 0.418 | 0.01642 | 0.01045 | 0.169 |
+| vol_5d | Ridge | 0.514 | 0.01271 | 0.00869 | 0.217 |
 | vol_5d | RF | 0.565 | 0.01197 | 0.00749 | 0.306 |
 
 **Key Findings**:
 - **Returns**: Both models fail (corr ~0, R² < 0) — markets are efficient
 - **Direction**: ~52% accuracy ≈ random guessing (baseline: 53.7% up days)
-- **Volatility**: RF significantly outperforms Ridge (0.417 vs 0.349 corr for vol_1d)
+- **Volatility**: RF significantly outperforms Ridge (0.418 vs 0.349 corr for vol_1d)
 - Non-linear patterns in volatility are captured by RF but missed by Ridge
 
 ### Distribution Prediction Results (Quantile Random Forest)
 
 | Target | Correlation | 90% Coverage | 50% Coverage |
 |--------|-------------|--------------|--------------|
-| ret_1d | 0.042 | 86.8% | 47.9% |
-| ret_5d | 0.061 | 84.3% | 44.2% |
-| vol_1d | 0.406 | 87.6% | 48.8% |
-| vol_5d | 0.557 | 88.0% | 48.2% |
+| ret_1d | 0.042 | 86.9% | 47.7% |
+| ret_5d | 0.062 | 84.4% | 44.1% |
+| vol_1d | 0.403 | 87.6% | 48.8% |
+| vol_5d | 0.556 | 88.1% | 48.3% |
 
 **Calibration Interpretation**:
 - 90% coverage should be 90%, actual is ~87-88% → slightly narrow intervals (minor overconfidence)
@@ -312,29 +312,29 @@ The ultimate test—train on 2016-2024, predict 2025 (truly unseen data):
 
 | Metric | In-Sample | OOS (2025) | Change |
 |--------|-----------|------------|--------|
-| Return Correlation | 0.042 | 0.175 | +0.133 |
-| Return 90% Coverage | 86.8% | 82.9% | -3.9% |
-| Return 50% Coverage | 47.9% | 42.9% | -5.0% |
-| Vol Correlation | 0.406 | 0.442 | **+0.036** |
-| Vol 90% Coverage | 87.6% | 89.6% | +2.0% |
-| Vol 50% Coverage | 48.8% | 50.8% | +2.0% |
+| Return Correlation | 0.042 | 0.171 | +0.129 |
+| Return 90% Coverage | 86.9% | 82.9% | -4.0% |
+| Return 50% Coverage | 47.7% | 42.8% | -4.9% |
+| Vol Correlation | 0.403 | 0.446 | **+0.043** |
+| Vol 90% Coverage | 87.6% | 89.2% | +1.6% |
+| Vol 50% Coverage | 48.8% | 50.3% | +1.5% |
 
-**Critical Finding**: Volatility predictions **improve** out-of-sample (0.442 vs 0.406), demonstrating genuine predictive power rather than overfitting.
+**Critical Finding**: Volatility predictions **improve** out-of-sample (0.446 vs 0.403), demonstrating genuine predictive power rather than overfitting.
 
 ### GARCH vs QRF Comparison
 
 | Model | Correlation (QQQ, 252 days) |
 |-------|----------------------------|
 | GARCH(1,1) | 0.147 |
-| Quantile RF | 0.217 |
-| **ML Advantage** | **+0.070** |
+| Quantile RF | 0.221 |
+| **ML Advantage** | **+0.073** |
 
 **Why QRF Wins**: GARCH uses only past returns of one asset. QRF leverages cross-asset features (VIX, sector volatility, volume) for better forecasts.
 
 ### Statistical Significance
 
 Bootstrap 95% confidence intervals confirm results are statistically significant:
-- Volatility Correlation: 0.406 [0.393, 0.421] ✓ Significant
+- Volatility Correlation: 0.403 [0.389, 0.417] ✓ Significant
 - Return Correlation: 0.042 [0.026, 0.059] ✓ Significant (but economically small)
 
 ### Error Analysis
@@ -360,11 +360,11 @@ This project demonstrates that:
 
 | Metric | Value |
 |--------|-------|
-| Volatility Correlation (In-Sample) | 0.406 |
-| Volatility Correlation (OOS 2025) | 0.442 |
+| Volatility Correlation (In-Sample) | 0.403 |
+| Volatility Correlation (OOS 2025) | 0.446 |
 | 90% Coverage (In-Sample) | 87.6% |
-| 90% Coverage (OOS) | 89.6% |
-| ML vs GARCH Advantage | +0.070 |
+| 90% Coverage (OOS) | 89.2% |
+| ML vs GARCH Advantage | +0.073 |
 
 ### Practical Applications
 
